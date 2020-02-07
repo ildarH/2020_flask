@@ -128,3 +128,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VSCode versions used for testing VSCode extensions
+.vscode-test
+.vscode
