@@ -18,10 +18,9 @@
 <div class="container">
 
     <div class="rules">
-        <h2>Тестирование экстрасенсов</h2>
+        <div class="rules-title"><h2>Тестирование экстрасенсов</h2><a href="{{ url_for('restartgame') }}"><button class="btnRestart">&#8635;</button></a></div>
         <p>Предлагаем принять участие в тестировании экстрасенсов.</p>
         <ol>
-            <li>Выберите количество участников</li>
             <li>Загадайте двузначное число и подтвердите кнопкой, что вы его загадали</li>
             <li>Посмотрите догадается ли кто-то из участников и отправьте им загаданное число</li>
         </ol>
@@ -34,210 +33,55 @@
 
     <div class="game">
         <form method="POST" onsubmit="return false">
+            <button id="btnDelPlayer" class="buttonGrp" title="Удалить игрока">-</button>
             <input type="hidden" id="start" value="1">
-            <button id="btn_start">Загадать</button>
+            <button id="btnStartGame" class="buttonGrp">Загадать</button>
             <input class="correctAnswer"
                     placeholder="00"
-                    id="input_correct_answer"
+                    id="inputCorrectAnswer"
                     min="10"
                     max="99"
                     step="1"
                     type="number">
-            <button id="btn_correct_answer">Отправить</button>
+            <button id="btnCorrectAnswer" class="buttonGrp">Отправить</button>
+            <button id="btnAddPlayer" class="buttonGrp" title="Добавить игрока">+</button>
         </form>
-
     </div>
 
-    <div class="cards">
-
-        <div class="card" data-player="1" data-type="player-card">
-            <div class="card-front" style="display:none">+</div>
-            <div class="card-back">
-
-                <div class="card-header">
-
-                    <div class="card-title">&#128052;</div>
-                    <div class="card-stats" data-player="1" data-type="statistic">
-                        <div class="stat-row">
-                            <div class="type">всего догадок:</div>
-                            <div class="value" data-player="1" data-type="statistic" data-stat-total=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">правильных:</div>
-                            <div class="value" data-player="1" data-type="statistic" data-stat-true=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">достоверность:</div>
-                            <div class="value" data-player="1" data-type="statistic" data-stat-score=""></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-content" style="display:none" data-player="1" data-type="content">
-                    <p style="display:none">Предположения:</p>
-                    <ul class="answersList" data-player="1" data-type="valuesList"></ul>
-                    <p style="display:none">Правильные ответы:</p>
-                    <ul class="answersList" style="display:none" data-player="1" data-type="correctList"></ul>
-                </div>
-
-                <div class="card-footer" style="display:none" data-player="1" data-type="statistic" data-stat-total="" data-stat-true=""><hr><progress></progress></div>
-            </div>
-        </div>
-
-        <div class="card" data-player="2" data-type="player-card">
-
-            <div class="card-front" style="display:none">+</div>
-            <div class="card-back">
-                <div class="card-header">
-                    <div class="card-title">&#128053;</div>
-                    <div class="card-stats" data-player="2" data-type="statistic">
-                        <div class="stat-row">
-                            <div class="type">всего догадок:</div>
-                            <div class="value" data-player="2" data-type="statistic" data-stat-total=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">правильных:</div>
-                            <div class="value" data-player="2" data-type="statistic" data-stat-true=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">достоверность:</div>
-                            <div class="value" data-player="2" data-type="statistic" data-stat-score=""></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-content" style="display:none" data-player="2" data-type="content">
-                    <p style="display:none">Предположения:</p>
-                    <ul class="answersList" style="display:none" data-player="2" data-type="valuesList"></ul>
-                    <p style="display:none">Правильные ответы:</p>
-                    <ul class="answersList" style="display:none" data-player="2" data-type="correctList"></ul>
-                </div>
-
-                <div class="card-footer" style="display:none" data-player="2" data-type="statistic" data-stat-total="" data-stat-true=""><hr><progress></progress></div>
-            </div>
-        </div>
-
-        <div class="card" data-player="3" data-type="player-card">
-
-            <div class="card-front" title="Добавить игрока">+</div>
-
-            <div class="card-back" style="display:none">
-
-                <div class="card-header">
-                    <div class="card-title">&#128056;<span class="card-btn_close" data-player="3" data-type="btn_close" title="Закрыть">x</span></div>
-                    <div class="card-stats" data-player="3" data-type="statistic">
-                        <div class="stat-row">
-                            <div class="type">всего догадок:</div>
-                            <div class="value" data-player="3" data-type="statistic" data-stat-total=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">правильных:</div>
-                            <div class="value" data-player="3" data-type="statistic" data-stat-true=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">достоверность:</div>
-                            <div class="value" data-player="3" data-type="statistic" data-stat-score=""></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-content" style="display:none" data-player="3" data-type="content">
-                    <p style="display:none">Предположения:</p>
-                    <ul class="answersList" style="display:none" data-player="3" data-type="valuesList"></ul>
-                    <p style="display:none">Правильные ответы:</p>
-                    <ul class="answersList" style="display:none" data-player="3" data-type="correctList"></ul>
-                </div>
-
-                <div class="card-footer" style="display:none" data-player="3" data-type="statistic" data-stat-total="" data-stat-true=""><hr><progress></progress></div>
-
-            </div>
-
-        </div>
-
-        <div class="card" data-player="4" data-type="player-card" style="display:none">
-
-            <div class="card-front" title="Добавить игрока">+</div>
-
-            <div class="card-back" style="display:none">
-
-                <div class="card-header">
-                    <div class="card-title">&#128057;<span class="card-btn_close" data-player="4" data-type="btn_close" title="Закрыть">x</span></div>
-                    <div class="card-stats" data-player="4" data-type="statistic">
-                        <div class="stat-row">
-                            <div class="type">всего догадок:</div>
-                            <div class="value" data-player="4" data-type="statistic" data-stat-total=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">правильных:</div>
-                            <div class="value" data-player="4" data-type="statistic" data-stat-true=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">достоверность:</div>
-                            <div class="value" data-player="4" data-type="statistic" data-stat-score=""></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-content" style="display:none" data-player="4" data-type="content">
-                    <p style="display:none">Предположения:</p>
-                    <ul class="answersList" style=display:none data-player="4" data-type="valuesList"></ul>
-                    <p style="display:none">Правильные ответы:</p>
-                    <ul class="answersList" style="display:none" data-player="4" data-type="correctList"></ul>
-                </div>
-
-                <div class="card-footer" style="display:none" data-player="4" data-type="statistic" data-stat-total="" data-stat-true=""><hr><progress></progress></div>
-
-            </div>
-
-        </div>
-
-        <div class="card" data-player="5" data-type="player-card" style="display:none">
-
-            <div class="card-front" title="Добавить игрока">+</div>
-
-            <div class="card-back" style="display:none">
-
-                <div class="card-header">
-
-                    <div class="card-title">&#128059;<span class="card-btn_close" data-player="5" data-type="btn_close" title="Закрыть">x</span></div>
-
-                    <div class="card-stats" data-player="5" data-type="statistic">
-                        <div class="stat-row">
-                            <div class="type">всего догадок:</div>
-                            <div class="value" data-player="5" data-type="statistic" data-stat-total=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">правильных:</div>
-                            <div class="value" data-player="5" data-type="statistic" data-stat-true=""></div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="type">достоверность:</div>
-                            <div class="value" data-player="5" data-type="statistic" data-stat-score=""></div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="card-content" style="display:none" data-player="5" data-type="content">
-
-                    <p style="display:none">Предположения:</p>
-                    <ul class="answersList" style="display:none" data-player="5" data-type="valuesList"></ul>
-                    <p style="display:none">Правильные ответы:</p>
-                    <ul class="answersList" style="display:none" data-player="5" data-type="correctList"></ul>
-
-                </div>
-
-                <div class="card-footer" style="display:none" data-player="5" data-type="statistic" data-stat-total="" data-stat-true=""><hr><progress></progress></div>
-
-            </div>
-
-        </div>
-
-    </div>
+    <div class="cards"></div>
 
     <div class="footer" id="errors"></div>
 
 </div>
+
+<template id="player">
+    <div class="card" data-player="1" data-type="playerCard">
+        <div class="card-header">
+            <div class="card-title"><span class="avatar"></span></div>
+            <div class="card-stats"  data-type="statistic">
+                <div class="stat-row">
+                    <div class="type">всего догадок:</div>
+                    <div class="value" data-type="statistic" data-stat-total=""></div>
+                </div>
+                <div class="stat-row">
+                    <div class="type">правильных:</div>
+                    <div class="value" data-type="statistic" data-stat-true=""></div>
+                </div>
+                <div class="stat-row">
+                    <div class="type">достоверность:</div>
+                    <div class="value" data-type="statistic" data-stat-score=""></div>
+                </div>
+            </div>
+        </div>
+        <div class="card-content" style="display:none" data-type="content">
+            <p style="display:none">Предположения:</p>
+            <ul class="answersList" data-type="valuesList"></ul>
+            <p style="display:none">Правильные ответы:</p>
+            <ul class="answersList" style="display:none" data-type="correctList"></ul>
+        </div>
+        <div class="card-footer" style="display:none" data-type="statistic" data-stat-total="" data-stat-true=""><hr><progress></progress></div>
+    </div>
+</template>
 
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"
         integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
