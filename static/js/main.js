@@ -1,465 +1,403 @@
-$(document).ready(function() {
+const MINPLAYERS = 2,
+      MAXPLAYERS = 5;
+let avatar = ["🐴", "🐵", "🐸",
+              "🐹", "🦁", "🐱‍👤",
+              "🤖", "🦄", "🐲",
+              "🧞‍♂️", "💀", "🦉",
+              "🐦", "🐞", "🐌"],
+    dataType = {
+        content: "[data-type='content']",
+        correctAnswers: "[data-type='correct-answers']",
+        correctList: "[data-type='correctList']",
+        playerCard: "[data-type='playerCard']",
+        statTotal: "[data-stat-total]",
+        statTrue: "[data-stat-true]",
+        statScore: "[data-stat-score]",
+        valuesList: "[data-type='valuesList']",
+    },
+    players = [];
+let btnStart = $("#btnStartGame"),
+    inputCorrectAnswer = $("#inputCorrectAnswer"),
+    btnCorrectAnswer = $("#btnCorrectAnswer"),
+    btnAddPlayer = $("#btnAddPlayer"),
+    btnDelPlayer = $("#btnDelPlayer"),
+    btnRestart = $(".btnRestart"),
+    errorsField = $("#errors"),
+    dataField = $("#data"),
+    templatePlayer = $("#player").html();
 
-    let urlParamStart               = "/startgame",
-        urlParamGameValidate        = "/validategame";
-    let gameStartVal                = 0,
-        countPlayersVal             = 0,
-        correctAnswerVal            = 0,
-        gameJson                    = 0,
-        storageGame                 = {},
-        storageStat                 = {},
-        storageCorrectValues        = [],
-        MINPLAYERS                  = 2,
-        MAXPLAYERS                  = 5,
-        DELAY                       = 200;
-    let dataToServer                = {
-            "gameStart"             : gameStartVal,
-            "countPlayers"          : countPlayersVal,
-            "inputCorrectAnswer"    : correctAnswerVal,
-            "gameJson"              : gameJson
+$(document).ready(function() {
+    let gameStartVal = 0,
+        countPlayersVal = 0,
+        correctAnswerVal = 0,
+        dataToServer = {
+            'gameStart': gameStartVal,
+            'countPlayers': countPlayersVal,
+            'correctAnswer': correctAnswerVal
         };
-    let avatar                      =  ["🐴", "🐵", "🐸", "🐹", "🦁",
-                                        "🐱‍👤", "🤖", "🦄", "🐲", "🧞‍♂️",
-                                        "💀", "🦉", "🐦", "🐞", "🐌"];
-    let dataType                    = {
-                content             : "[data-type='content']",
-                correctAnswers      : "[data-type='correct-answers']",
-                correctList         : "[data-type='correctList']",
-                close               : "[data-type='btn_close']",
-                playerCard          : "[data-type='playerCard']",
-                statistic           : "[data-type='statistic']",
-                statTotal           : "[data-stat-total]",
-                statTrue            : "[data-stat-true]",
-                statScore           : "[data-stat-score]",
-                index               : "[data-index='",
-                valueIsTrue         : "[data-value-is-true']",
-                value               : "[data-value']",
-                valuesList          : "[data-type='valuesList']",
-                player              : "[data-player='"
-        }
-    let templatePlayer = $("#player").html();
     let game = {
-        addPlayer: function(rPlayerNum) {
-            let countPlayersVal = game.countPlayers(),
-                rPlayerTmp = $(templatePlayer);
-            if (rPlayerNum > countPlayersVal) {
-                $(rPlayerTmp).data("player", rPlayerNum).attr("data-player", rPlayerNum);
-                $(rPlayerTmp).find(".avatar").html(avatar[rPlayerNum-1]);
-                $(".cards").append(rPlayerTmp);
-            }
-        },
-        ajaxCall(urlParam, dataToServer) {
-            ajaxResponse = $.ajax({
-                url     : urlParam,
-                data    : dataToServer,
-                type    : "POST",
-                dataType: "json"
-            })
-            return ajaxResponse;
-        },
-        clickHandlers: function() {
-            $("#btnStartGame").click(function() {
-                game.startGame();
-                game.setInputs("data_received");
-                $("#inputCorrectAnswer").val("");
-            });
-            $("#inputCorrectAnswer").keyup(function() {
-                let isFormValid = false;
-                isFormValid = game.validateForm();
-                $("btnCorrectAnswer").toggleClass("disabled", isFormValid);
-                if (isFormValid) {
-                    game.setInputs("input");
+        addPlayer: function(data) {
+            if (typeof(arguments[0]) != "undefined") {
+                if (!isEmpty(data)) {
+                    for (player = 0; player < data.length; player++) {
+                        let newPlayer = new Player(player,
+                                                   data[player].answers,
+                                                   data[player].statistic,
+                                                   avatar[player])
+                        players.push(newPlayer);
+                    }
+                } else {
+                    for (player = 0; player < MINPLAYERS; player++) {
+                        let newPlayer = new Player(player)
+                        players.push(newPlayer);
+                    }
                 }
-            });
-            $("#btnCorrectAnswer").click(function() {
-                game.validateGame();
-                game.setInputs("start_or_continue");
-                $("#inputCorrectAnswer").val("");
-            });
-            $(".card-front").click(function() {
-                game.addPlayer();
-            });
-            $(".card-btn_close").click(function() {
-                game.delPlayer();
-            });
-            $("#btnDelPlayer").click(function(){
-                let rPlayerNum = game.countPlayers();
-                if (rPlayerNum > MINPLAYERS && rPlayerNum <= MAXPLAYERS) {
-                    game.delPlayer();
-                    game.setInputs("start_or_continue");
-                };
-            });
-            $("#btnAddPlayer").click(function(){
-                let rPlayerNum = game.countPlayers();
-                if (rPlayerNum < MAXPLAYERS) {
-                    game.addPlayer(rPlayerNum + 1);
-                    game.setInputs("start_or_continue");
-                };
-            });
-            $(".btnRestart").click(function(){
-                sessionStorage.clear();
-            });
-        },
-        countPlayers: function() {
-            return $(".card").length;
+            } else {
+                let newPlayer = new Player(game.countPlayers())
+                players.push(newPlayer);
+            }
+            dataToServer.gameStart = 0;
+            dataToServer.countPlayers = game.countPlayers();
+            dataToServer.correctAnswer = 0;
+            getData("/", dataToServer).done(function(data) { game.setData(data) })
+                                      .fail(function() { errorsField.text("add player game error: please reload") })
         },
         delPlayer: function() {
-            let rPlayerNum = game.countPlayers(),
-                rPlayerStr = dataType.player + rPlayerNum + "']",
-                rPlayerCard = $(rPlayerStr + dataType.playerCard),
-                tmpObj = JSON.parse(sessionStorage.storageGame);
-            tmpObj.pop();
-            sessionStorage.setItem("storageGame", JSON.stringify(tmpObj))
-            rPlayerCard.remove();
+            players.pop();
+            dataToServer.gameStart = 0;
+            dataToServer.countPlayers = game.countPlayers();
+            dataToServer.correctAnswer = 0;
+            getData("/", dataToServer).done(function(data) { game.setData(data) })
+                                      .fail(function() { errorsField.text("delete player error: please reload") });
         },
-        init: function() {
-            let renderStatus = "refresh";
-            game.clickHandlers();
-            if (sessionStorage.length > 1) {
-                storageGame = sessionStorage.storageGame !="undefined" ? JSON.parse(sessionStorage.storageGame) : {};
-                storageStat = sessionStorage.storageStat !="undefined" ? JSON.parse(sessionStorage.storageStat) : {};
-                storageCorrectValues = sessionStorage.storageCorrectValues !="undefined" ? JSON.parse(sessionStorage.storageCorrectValues) : [];
-            }
-            if (sessionStorage.avatar !="undefined" && sessionStorage.avatar) {
-                avatar = JSON.parse(sessionStorage.avatar);
-            } else {
-                shuffleArray(avatar);
-                sessionStorage.setItem("avatar", JSON.stringify(avatar));
-            }
-            dataJson = {
-                "gameJson" : storageGame,
-                "statJson" : storageStat,
-                "gameCorrectValues" : storageCorrectValues
-            }
-            game.render(dataJson, renderStatus)
-            game.setInputs("start_or_continue");
+        countPlayers: function() {
+            return players.length
         },
-        render: function(dataJson, renderStatus) {
-            if (!dataJson.error) {
-                let gameJson = dataJson.gameJson,
-                    statJson = dataJson.statJson,
-                    gameCorrectValues = storageCorrectValues;
-                if (!isEmpty(gameJson) && renderStatus !="refresh") {
-                    let gameJsonPlayers = Object.keys(gameJson).length;
-                    let tmpObj = sessionStorage.getItem("storageGame") ? JSON.parse(sessionStorage.getItem("storageGame")) : [];
-                    let lastNumberOfAnswer = 0;
-                    for (let player = 0; player < gameJsonPlayers; player++) {
-                        if (!isEmpty(tmpObj[player])) {
-                            lastNumberOfAnswer =  tmpObj[player]["answers"].length - 1
-                            if (tmpObj[player]["answers"][lastNumberOfAnswer]["is_true"] == null) {
-                                let is_true = gameJson[player]["answers"][lastNumberOfAnswer]["is_true"];
-                                tmpObj[player]["answers"][lastNumberOfAnswer]["is_true"] = is_true;
-                            } else {
-                                lastNumberOfAnswer += 1;
-                                let value = gameJson[player]["answers"][0]["value"],
-                                    is_true = gameJson[player]["answers"][0]["is_true"],
-                                    tmpObjAddData =  {"numberOfAnswer": lastNumberOfAnswer, "value": value, "is_true": is_true};
-                                tmpObj[player]["answers"].push(tmpObjAddData)
-                            }
-                        } else {
-                            let value = gameJson[player]["answers"][0]["value"],
-                                is_true = gameJson[player]["answers"][0]["is_true"],
-                                tmpObjAddData = {"id" : player, "answers" : [
-                                    {"numberOfAnswer": lastNumberOfAnswer, "value": value, "is_true": is_true}
-                                ]};
-                            tmpObj.push(tmpObjAddData);
-                        }
-                    }
-                    sessionStorage.setItem("storageGame", JSON.stringify(tmpObj));
-                    storageGame = tmpObj;
+        clickHandlers: function() {
+            btnStart.click(function() { game.startGame() });
+            inputCorrectAnswer.keyup(function() {
+                let isFormValid = false;
+                isFormValid = game.validateForm();
+                inputCorrectAnswer.prop("disabled", isFormValid);
+                btnCorrectAnswer.prop("disabled", !isFormValid);
+                btnCorrectAnswer.not(":disabled").focus();
+            });
+            btnCorrectAnswer.click(function() { game.validateGame() });
+            btnDelPlayer.click(function() {
+                if (game.countPlayers() > MINPLAYERS && game.countPlayers() <= MAXPLAYERS) {
+                    game.delPlayer()
                 }
-                if (!isEmpty(statJson) && renderStatus !="refresh") {
-                    let tmpObj = {};
-                    tmpObj = statJson;
-                    sessionStorage.setItem("storageStat", JSON.stringify(tmpObj));
-                    storageStat = tmpObj;
+            });
+            btnAddPlayer.click(function() {
+                if (game.countPlayers() < MAXPLAYERS) {
+                    game.addPlayer()
                 }
-                if (!isEmpty(gameCorrectValues) && renderStatus !="refresh") {
-                    sessionStorage.setItem("storageCorrectValues", JSON.stringify(storageCorrectValues));
-                }
-                dataJson = {
-                    gameJson : storageGame,
-                    statJson : storageStat,
-                    gameCorrectValues : storageCorrectValues
-                }
-                gameJson = isEmpty(dataJson["gameJson"]) ? {} : dataJson["gameJson"];
-                statJson = isEmpty(dataJson["statJson"]) ? {} : dataJson["statJson"];
-                correctAnswersList = isEmpty(dataJson["gameCorrectValues"]) ? {} : dataJson["gameCorrectValues"];
-                switch(renderStatus) {
-                    case "default":
-                    case "refresh":
-                        if (!isEmpty(gameJson)) {
-                            let players = Object.keys(gameJson).length;
-                            for (let player = 0; player < players; player++) {
-                                let rPlayerNum = player + 1;
-                                game.addPlayer(rPlayerNum);
-                                let rPlayerStr = dataType.player + rPlayerNum + "']",
-                                    gameNumLast = gameJson[player]["answers"].length - 1,
-                                    rPlayerCard = $(rPlayerStr + dataType.playerCard),
-                                    rPlayerCardContent = $(rPlayerCard.find(dataType.content)),
-                                    rPlayerCardContentValues = $(rPlayerCard.find(dataType.valuesList)),
-                                    rPlayerCardContentCorrectValues = $(rPlayerCard.find(dataType.correctList)),
-                                    rPlayerCardStatTotal = $(rPlayerCard.find(dataType.statTotal)),
-                                    rPlayerCardFooter = $(rPlayerCard.find(".card-footer"));
-                                rPlayerCardContent.show();
-                                rPlayerCardContentValues.show();
-                                rPlayerCardContentValues.prev("p").show();
-                                rPlayerCardContentValues.empty(); //?
-                                rPlayerCardContentCorrectValues.empty(); //?
-                                for (let answer = 0; answer <= gameNumLast; answer++) {
-                                    let gameValue = gameJson[player]["answers"][answer]["value"],
-                                        gameIsTrue = gameJson[player]["answers"][answer]["is_true"];
-                                    rPlayerCardContentValues.prepend("<li>" + gameValue + "</li>");
-                                    rPlayerCardContentValues.find("li:first").data({
-                                        "index" : answer,
-                                        "value" : gameValue,
-                                        "valueIsTrue" : gameIsTrue
-                                    }).attr({
-                                        "data-index" : answer,
-                                        "data-value" : gameValue,
-                                        "data-value-is-true" : gameIsTrue
-                                    })
-                                    if (gameIsTrue) {
-                                        rPlayerCardContentValues.find("li:first").addClass("correctElement");
-                                        rPlayerCardContentCorrectValues.show();
-                                        rPlayerCardContentCorrectValues.prev("p").show();
-                                        rPlayerCardContentCorrectValues.prepend("<li>" + gameValue + "</li>");
-                                        rPlayerCardContentCorrectValues.find("li:first").addClass("correctElement");
-                                    } else {
-                                        rPlayerCardContentValues.find("li:first").addClass("wrongElement");
-                                    }
-                                }
-                                rPlayerCardContentValues.find("li:first").addClass("lastElement");
-                            }
-                        } else {
-                            $(".cards").empty()
-                            for (let player = 0; player < MINPLAYERS; player++) {
-                                rPlayerNum = player + 1;
-                                rPlayerStr = dataType.player + rPlayerNum + "']";
-                                game.addPlayer(rPlayerNum);
-                            }
-                        }
-                        if (!isEmpty(statJson)) {
-                            for (let player = 0; player < statJson.length; player++) {
-                                let rPlayerNum = player + 1,
-                                    rPlayerStr = dataType.player + rPlayerNum + "']",
-                                    rPlayerCard = $(rPlayerStr + dataType.playerCard),
-                                    rPlayerCardStatTotal = $(rPlayerCard.find(dataType.statTotal)),
-                                    rPlayerCardStatTrue = $(rPlayerCard.find(dataType.statTrue)),
-                                    rPlayerCardStatScore = $(rPlayerCard.find(dataType.statScore)),
-                                    statJsonTotalVal = statJson[player]["total_answers"],
-                                    statJsonTrueVal = statJson[player]["true_answers"],
-                                    statJsonScoreVal = statJson[player]["score"] * 100;
-                                $(rPlayerCardStatTotal).text(statJsonTotalVal);
-                                $(rPlayerCardStatTrue).text(statJsonTrueVal);
-                                $(rPlayerCardStatScore).text(statJsonScoreVal.toFixed()+"%");
-                            }
-                        }
-                        if (!isEmpty(correctAnswersList)) {
-                            let rCorrectAnswers = $(dataType.correctAnswers);
-                                rCorrectAnswers.empty();
-                                rCorrectAnswers.prev("p").show();
-                                correctAnswersList.forEach(element => {
-                                    $(rCorrectAnswers).prepend("<li>" + element + "</li>");
-                                });
-                        }
-                        break;
-                    case "start":
-                        if (!isEmpty(gameJson)) {
-                            let players = Object.keys(gameJson).length;
-                            for (let player = 0; player < players; player++) {
-                                let rPlayerNum = player + 1,
-                                    rPlayerStr = dataType.player + rPlayerNum + "']";
-                                let gameNumLast = gameJson[player]["answers"].length - 1,
-                                    gameIsTrue = gameJson[player]["answers"][gameNumLast]["is_true"],
-                                    gameLastValue = gameJson[player]["answers"][gameNumLast]["value"],
-                                    rPlayerCard = $(rPlayerStr + dataType.playerCard),
-                                    rPlayerCardContent = $(rPlayerCard.find(dataType.content)),
-                                    rPlayerCardContentValues = $(rPlayerCard.find(dataType.valuesList)),
-                                    rPlayerCardFooter = $(rPlayerCard.find(".card-footer"));
-                                    rPlayerCardContent.show();
-                                    rPlayerCardContentValues.prev("p").show();
-                                rPlayerCardContentValues.find("li:first").removeClass("lastElement");
-                                rPlayerCardContentValues.prepend("<li>" + gameLastValue + "</li>").hide().fadeIn(DELAY);
-                                rPlayerCardContentValues.find("li:first").data({
-                                    "index" : gameNumLast,
-                                    "value" : gameLastValue,
-                                    "valueIsTrue" : gameIsTrue
-                                }).attr({
-                                    "data-index" : gameNumLast,
-                                    "data-value" : gameLastValue,
-                                    "data-value-is-true" : gameIsTrue
-                                }).addClass("lastElement");
-                            }
-                        }
-                        if (!isEmpty(statJson)) {
-                            for (let player = 0; player < statJson.length; player++) {
-                                let rPlayerNum = player + 1,
-                                    rPlayerStr = dataType.player + rPlayerNum + "']";
-                                    rPlayerCard = $(rPlayerStr + dataType.playerCard);
-                                    rAreaStatTotal = $(rPlayerCard.find(dataType.statTotal)),
-                                    rAreaStatTrue = $(rPlayerCard.find(dataType.statTrue)),
-                                    rAreaStatScore = $(rPlayerCard.find(dataType.statScore)),
-                                    statTotalVal = statJson[player]["total_answers"],
-                                    statTrueVal = statJson[player]["true_answers"],
-                                    statScoreVal = statJson[player]["score"] * 100;
-                                $(rAreaStatTotal).text(statTotalVal + 1);
-                                $(rAreaStatTrue).text(statTrueVal);
-                                $(rAreaStatScore).text(statScoreVal.toFixed()+"%");
-                            }
-                        }
-                        break;
-                    case "validate":
-                        if (!isEmpty(gameJson)) {
-                            for (let player = 0; player < gameJson.length; player++) {
-                                let rPlayerNum = player + 1,
-                                    rPlayerStr = dataType.player + rPlayerNum + "']",
-                                    rPlayerCard = $(rPlayerStr + dataType.playerCard),
-                                    rPlayerCardContent = $(rPlayerCard.find(dataType.content)),
-                                    rPlayerCardContentValues = $(rPlayerCard.find(dataType.valuesList)),
-                                    rPlayerCardContentCorrectValues = $(rPlayerCard.find(dataType.correctList)),
-                                    gameNumLast = gameJson[player]["answers"].length - 1,
-                                    gameIsTrue = gameJson[player]["answers"][gameNumLast]["is_true"],
-                                    gameLastValue = gameJson[player]["answers"][gameNumLast]["value"];
-                                    rPlayerCardContentValues.find("li:first").
-                                                                data("valueIsTrue", gameIsTrue).
-                                                                attr("data-value-is-true", gameIsTrue);
-                                if (gameIsTrue) {
-                                    rPlayerCardContentCorrectValues.show();
-                                    rPlayerCardContentCorrectValues.prev("p").show();
-                                    rPlayerCardContentCorrectValues.prepend("<li>" + gameLastValue + "</li>");
-                                    rPlayerCardContentCorrectValues.find("li:first").addClass("correctElement");
-                                    rPlayerCardContentValues.find("li:first").addClass("correctElement");
-                                } else {
-                                    rPlayerCardContentValues.find("li:first").addClass("wrongElement");
-                                }
-                            }
-                        }
-                        if (!isEmpty(statJson)) {
-                            tmpValue = 0;
-                            tmpPlayer = "";
-                            for (let player = 0; player < statJson.length; player++) {
-                                let rPlayerNum = player + 1,
-                                    rPlayerStr = dataType.player + rPlayerNum + "']";
-                                    rPlayerCard = $(rPlayerStr + dataType.playerCard);
-                                    rAreaStatTotal = $(rPlayerCard.find(dataType.statTotal)),
-                                    rAreaStatTrue = $(rPlayerCard.find(dataType.statTrue)),
-                                    rAreaStatScore = $(rPlayerCard.find(dataType.statScore)),
-                                    statTotalVal = statJson[player]["total_answers"],
-                                    statTrueVal = statJson[player]["true_answers"],
-                                    statScoreVal = statJson[player]["score"] * 100;
-                                $(rAreaStatTotal).text(statTotalVal);
-                                $(rAreaStatTrue).text(statTrueVal);
-                                $(rAreaStatScore).text(statScoreVal.toFixed()+"%");
-                                $(rPlayerCard).find(".avatar").removeClass("wobble-hor-bottom");
-                                if (tmpValue <= statScoreVal) {
-                                    tmpValue = statScoreVal;
-                                    tmpPlayer = rPlayerCard;
-                                }
-                            }
-                            $(tmpPlayer).find(".avatar").addClass("wobble-hor-bottom");
-                        }
-                        if (correctAnswersList) {
-                            let rCorrectAnswers = $(dataType.correctAnswers);
-                                rCorrectAnswers.empty();
-                                rCorrectAnswers.prev("p").show();
-                                correctAnswersList.forEach(element => {
-                                    $(rCorrectAnswers).prepend("<li>" + element + "</li>");
-                                });
-                        }
-                        break;
-                };
-            } else {
-                $("#errors").text(dataJson.error);
-            };
-        },
-        setInputs: function(gameStatus) {
-            let btnStart = $("#btnStartGame"),
-                inputCorrectAnswer = $("#inputCorrectAnswer"),
-                btnCorrectAnswer = $("#btnCorrectAnswer"),
-                btnAddPlayer = $("#btnAddPlayer"),
-                btnDelPlayer = $("#btnDelPlayer");
-            switch(gameStatus) {
-                case "start_or_continue":
-                    let countPlayersVal = game.countPlayers();
-                    btnStart.prop("disabled", false);
-                    btnStart.focus();
-                    inputCorrectAnswer.prop("disabled", true);
-                    btnCorrectAnswer.prop("disabled", true);
-                    if (countPlayersVal < MAXPLAYERS && countPlayersVal > MINPLAYERS) {
-                        btnAddPlayer.prop("disabled", false);
-                        btnDelPlayer.prop("disabled", false);
-                    } else if (countPlayersVal == MINPLAYERS || countPlayersVal == 0) {
-                        btnAddPlayer.prop("disabled", false);
-                        btnDelPlayer.prop("disabled", true);
-                    } else if (countPlayersVal == MAXPLAYERS) {
-                        btnAddPlayer.prop("disabled", true);
-                        btnDelPlayer.prop("disabled", false);
-                    };
-                    break;
-                case "data_received":
-                    btnStart.prop("disabled", true);
-                    inputCorrectAnswer.prop("disabled", false);
-                    inputCorrectAnswer.focus();
-                    btnCorrectAnswer.prop("disabled", true);
-                    btnAddPlayer.prop("disabled", true);
-                    btnDelPlayer.prop("disabled", true);
-                    break;
-                case "input":
-                    btnStart.prop("disabled", true);
-                    inputCorrectAnswer.prop("disabled", true);
-                    btnCorrectAnswer.prop("disabled", false);
-                    btnCorrectAnswer.focus();
-                    btnAddPlayer.prop("disabled", true);
-                    btnDelPlayer.prop("disabled", true);
-                    break;
-                default:
-                    $("#errors").text("set inputs error");
-                    break;
-            }
+            });
+            btnRestart.click(function() { game.restart() });
         },
         startGame: function() {
-            let renderStatus = "start";
             dataToServer.gameStart = 1;
-            dataToServer.countPlayers = game.countPlayers();
-            dataToServer.inputCorrectAnswer = null;
-            game.ajaxCall(urlParamStart, dataToServer).done(function(data) {
-                game.render(data, renderStatus);
-            }).fail(function() {
-                $("#errors").text("start game error: please reload");
-            });
-
+            dataToServer.countPlayers = this.countPlayers();
+            dataToServer.correctAnswer = 0;
+            getData("/", dataToServer).done(function(data) { game.setData(data); })
+                                      .fail(function() { errorsField.text("start game error: please reload") })
         },
         validateForm: function() {
             let isFormValid = false,
-            correctAnswerVal = parseInt($("#inputCorrectAnswer").val());
-            if (correctAnswerVal >= 10 && correctAnswerVal < 100 ) {
+                correctAnswerVal = parseInt(inputCorrectAnswer.val());
+            if (correctAnswerVal >= 10 && correctAnswerVal < 100) {
                 isFormValid = true;
             }
             return isFormValid;
         },
         validateGame: function() {
-            let correctAnswerVal = $("#inputCorrectAnswer").val();
-            let renderStatus = "validate";
-            storageCorrectValues.push(parseInt(correctAnswerVal));
+            let correctAnswerValue = inputCorrectAnswer.val();
+            inputCorrectAnswer.val("");
+            correctValuesStorage.value = correctAnswerValue;
             dataToServer.gameStart = 0;
-            dataToServer.countPlayers = 0;
-            dataToServer.inputCorrectAnswer = correctAnswerVal;
-            dataToServer.gameJson = sessionStorage.getItem("storageGame");
-            game.ajaxCall(urlParamGameValidate, dataToServer).done(function(data) {
-                game.render(data, renderStatus);
-            }).fail(function() {
-                $("#errors").text("validate  game error: please reload");
-            });
+            dataToServer.countPlayers = game.countPlayers();
+            dataToServer.correctAnswer = correctAnswerValue;
+            getData("/", dataToServer)
+                .done(function(data) { game.setData(data) })
+                .fail(function() { errorsField.text("validate game error: please reload") });
+        },
+        setInputs: function() {
+            let startButtonNotActive = false,
+                inputFieldNotActive = true,
+                sendButtonNotActive = true;
+            let answersIsAvailable = !isEmpty(players[players.length - 1].answers)
+            if (answersIsAvailable) {
+                let answersLength = players[players.length - 1].answers.length,
+                    lastAnswerIsVerified = players[players.length - 1].answers[answersLength - 1].isTrue == null ? false : true;
+                startButtonNotActive = !lastAnswerIsVerified;
+                inputFieldNotActive = lastAnswerIsVerified;
+                sendButtonNotActive = startButtonNotActive != inputFieldNotActive;
+            }
+            let addPlayerButtonNotActive = (players.length < MAXPLAYERS) && !startButtonNotActive ? false : true,
+                delPlayerButtonNotActive = (players.length > MINPLAYERS) && !startButtonNotActive ? false : true;
+            btnStart.prop("disabled", startButtonNotActive);
+            inputCorrectAnswer.prop("disabled", inputFieldNotActive);
+            btnCorrectAnswer.prop("disabled", sendButtonNotActive);
+            btnAddPlayer.prop("disabled", addPlayerButtonNotActive);
+            btnDelPlayer.prop("disabled", delPlayerButtonNotActive);
+            btnStart.not(":disabled").focus();
+            inputCorrectAnswer.not(":disabled").focus();
+        },
+        setData: function(data) {
+            checkNewGame(data);
+            for (let player = 0; player < players.length; player++) {
+                for (let answer = 0; answer < data[player].answers.length; answer++) {
+                    let index = data[player].answers[answer].index,
+                        value = data[player].answers[answer].value,
+                        isTrue = data[player].answers[answer].isTrue;
+                    players[player].addValue(index, value, isTrue);
+                }
+                players[player].statTotalAnswers = data[player].statistic.totalAnswers || 0;
+                players[player].statTrueAnswers = data[player].statistic.trueAnswers || 0;
+                players[player].statScore = data[player].statistic.score || 0;
+            }
+            game.setInputs();
+            renderCards(players);
+        },
+        restart: function() {
+            sessionStorage.clear();
+            getData('restart').done(function(data) { game.setData(data) })
+                              .fail(function() { errorsField.text("restart server error") });
+            window.location.reload(false);
+        },
+        init: function() {
+            let data = game.loadStorage();
+            game.addPlayer(data);
+            correctValuesStorage.init(data);
+            game.clickHandlers();
+            game.setInputs();
+        },
+        loadStorage: function() {
+            let dataFromServer = dataField.data("fromServer");
+            dataField.attr("data-from-server", null);
+            if (sessionStorage.avatar) { avatar = JSON.parse(sessionStorage.avatar); }
+            else {
+                shuffleArray(avatar);
+                sessionStorage.setItem("avatar", JSON.stringify(avatar));
+            }
+            if (!isEmpty(dataFromServer)) { return dataFromServer }
+            correctValuesStorage.clear();
+            return []
+        },
+        checkNewGame: function(data) {
+            if (!isEmpty(data)) {
+                if (data[0].answers.length < players[0].answers.length) {
+                    for (player = 0; player < players.length; player++) {
+                        players[player].answers = [];
+                    }
+                }
+            }
         }
     };
     game.init();
 });
 
+class Player {
+    constructor(id_, answers, statistic, icon) {
+        this.id_ = id_;
+        this.answers = answers || [];
+        this.statistic = statistic || {
+            'totalAnswers': 0,
+            'trueAnswers': 0,
+            'score': 0
+        };
+        this.icon = icon || avatar[this.id_];
+    }
+    set statTotalAnswers(totalAnswers) { this.statistic.totalAnswers = totalAnswers; }
+    get statTotalAnswers() { return this.statistic.totalAnswers; }
+
+    set statTrueAnswers(trueAnswers) { this.statistic.trueAnswers = trueAnswers; }
+    get statTrueAnswers() { return this.statistic.trueAnswers; }
+
+    set statScore(score) { this.statistic.score = score; }
+    get statScore() { return this.statistic.score; }
+
+    addValue(index, value, valueIsTrue) {
+        if (valueIsTrue == null && isEmpty(this.answers[index])) {
+            this.answers.push({
+                "index": index,
+                "value": value,
+                "isTrue": valueIsTrue
+            });
+        } else {
+            this.answers[index].isTrue = valueIsTrue;
+        }
+    }
+    toJSON() {
+        let {id_, answers, statistic} = this;
+        return {id_, answers, statistic};
+    }
+}
+
+let correctValuesStorage = {
+    values: [],
+    get value() {
+        if (sessionStorage.correctValues) {
+            this.values = JSON.parse(sessionStorage.correctValues);
+        }
+        return this.values;
+    },
+    set value(value) {
+        if (sessionStorage.correctValues) {
+            this.values = JSON.parse(sessionStorage.correctValues);
+        }
+        this.values.push(parseInt(value));
+        sessionStorage.setItem("correctValues", JSON.stringify(this.values));
+        renderCorrectValues(value);
+    },
+    init: function(data) {
+        if (sessionStorage.correctValues && !isEmpty(data)) {
+            this.values = JSON.parse(sessionStorage.correctValues);
+            renderCorrectValues();
+        }
+    },
+    clear: function() {
+        if (sessionStorage.correctValues) { sessionStorage.removeItem("correctValues") }
+        this.values = [];
+        renderCorrectValues();
+    }
+};
+
+function checkNewGame(data) {
+    if (!isEmpty(data)) {
+        if (data[0].answers.length < players[0].answers.length) {
+            for (player = 0; player < players.length; player++) {
+                players[player].answers = [];
+            }
+        correctValuesStorage.clear();
+        }
+    }
+}
+
+function renderCorrectValues(correctValue=null){
+    let field = $(dataType.correctAnswers);
+    if (!sessionStorage.correctValues) { field.empty() }
+    hideField(field);
+    if (correctValue) { field.prepend("<li>" + correctValue + "</li>") } 
+    else if(correctValuesStorage.values) {
+        correctValuesStorage.values.forEach(element => field.prepend("<li>" + element + "</li>"));
+    }
+    if (correctValue || sessionStorage.correctValues) { showHiddenField(field) }
+}
+
+function renderCards(players) {
+    let countCards = $(".card").length,
+        countPlayers = players.length;
+    if (countCards < countPlayers) {
+        _addCard();
+    } else if (countCards > countPlayers) {
+        _deleteCard();
+    }
+    for (player = 0; player < players.length; player++) {
+        let playerStr = "[data-player='" + players[player].id_ + "']";
+        playerCard = $(playerStr + dataType.playerCard);
+        _clearField(playerCard, players[player]);
+        _setStat(playerCard, players[player]);
+        _setAnswer(playerCard, players[player]);
+    }
+
+    function _clearField(playerCard) {
+        let field = $(playerCard.find(dataType.correctList));
+        hideField(field);
+        playerCard.find(dataType.correctList).empty();
+        field = $(playerCard.find(dataType.content));
+        hideField(field);
+        playerCard.find(dataType.valuesList).empty();
+    }
+
+    function _setStat(playerCard, player) {
+        playerCard.find(dataType.statTotal).text(player.statistic.totalAnswers);
+        playerCard.find(dataType.statTrue).text(player.statistic.trueAnswers);
+        playerCard.find(dataType.statScore).text((player.statistic.score * 100).toFixed() + "%");
+    }
+
+    function _setAnswer(playerCard, player) {
+        if (!isEmpty(player.answers)) {
+            let field = $(playerCard.find(dataType.content));
+            showHiddenField(field);
+            field = $(playerCard.find(dataType.valuesList));
+            showHiddenField(field);
+            for (answer = 0; answer < player.answers.length; answer++) {
+                let index = player.answers[answer].index,
+                    value = player.answers[answer].value,
+                    isTrue = player.answers[answer].isTrue;
+                _addAnswerElement(field, index, value, isTrue);
+                if (isTrue) {
+                    _addCorrectAnswerElement(playerCard, value);
+                }
+            }
+            _setClass();
+        }
+    }
+
+    function _addAnswerElement(field, index, value, isTrue) {
+        field.find("li:first").removeClass("lastElement");
+        field.prepend("<li>" + value + "</li>");
+        field.find("li:first").addClass("lastElement")
+                              .data({
+                                     "index" : index,
+                                     "value" : value
+                              })
+                              .attr({
+                                     "data-index" : index,
+                                     "data-value" : value
+                              });
+        if (isTrue) {
+            field.find("li:first").data("valueIsTrue", true).attr("data-value-is-true", true);
+        } else if (isTrue == false) {
+            field.find("li:first").data("valueIsTrue", false).attr("data-value-is-true", false);
+        }
+    }
+
+    function _setClass() {
+        let dataValueIsTrueElements = $("[data-value-is-true='true']"),
+            dataValueIsFalseElements = $("[data-value-is-true='false']");
+        dataValueIsTrueElements.addClass("correctElement");
+        dataValueIsFalseElements.addClass("wrongElement");
+    }
+
+    function _addCorrectAnswerElement(playerCard, value) {
+        let field = $(playerCard.find(dataType.correctList));
+        showHiddenField(field);
+        field.prepend("<li>" + value + "</li>");
+        field.find("li:first").addClass("correctElement");
+    }
+
+    function _addCard(){
+        for (player = $(".card").length; player < players.length; player++) {
+            let playerTmp = $(templatePlayer);
+            $(playerTmp).data("player", players[player].id_).attr("data-player", players[player].id_);
+            $(playerTmp).find(".avatar").html(players[player].icon);
+            $(".cards").append(playerTmp);
+        }
+    }
+    function _deleteCard() {
+        let playerStr = "[data-player='" + players.length + "']",
+            playerCard = $(playerStr + dataType.playerCard);
+        playerCard.remove();
+    }
+}
+
+function showHiddenField(field) {
+    let header = field.prev("p");
+    field.show();
+    header.show();
+}
+
+function hideField(field) {
+    let header = field.prev("p");
+    field.hide();
+    header.hide();
+}
+
 function isEmpty(obj) {
-    for(let prop in obj) {
-        if(obj.hasOwnProperty(prop))
-            return false;
+    for (let prop in obj) {
+        if (obj.hasOwnProperty(prop)) return false;
     }
     return true;
 }
@@ -473,4 +411,22 @@ function shuffleArray(array) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
+}
+
+function getData(url, data) {
+    return ajaxCall(url, data);
+}
+
+function ajaxCall(urlParam, dataToServer) {
+    ajaxResponse = $.ajax({
+        url: urlParam,
+        data: JSON.stringify(dataToServer, null, "\t"),
+        type: "POST",
+        dataType: "json",
+        contentType: "application/json;charset=UTF-8",
+        xhrFields: {
+            withCredentials: true,
+        },
+    });
+    return ajaxResponse;
 }

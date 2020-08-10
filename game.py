@@ -1,63 +1,57 @@
-import random
-import json
-import sys
-
-MIN_NUMBER = 10
-MAX_NUMBER = 99
+from player import Player
 
 
-def random_answer():
-    return random.randint(MIN_NUMBER, MAX_NUMBER)
+def game(players, **kwargs):
+    """Interface for Players class interaction.
 
+    Args:
+        players (list): list of Players instances.
+        commands (dict): game commands.
 
-def answer_type_1(correct_answers_list):
-    last_answer = correct_answers_list[-1]
-    if last_answer != MAX_NUMBER:
-        if last_answer > 54:
-            return (last_answer + MAX_NUMBER) // 2
-        else:
-            return (last_answer + MIN_NUMBER) // 2
+    Returns:
+        players: list of Players instances.
+        gameJson: json contains all game info.
+    """
+    gameStart = int(kwargs['gameStart']) if kwargs else 0
+    countPlayers = int(kwargs['countPlayers']) if kwargs else 0
+    correctAnswer = int(kwargs['correctAnswer']) if kwargs else 0
+    gameJson = []
 
+    def _addPlayer(players, gameJson=None):
+        """Adds Player's instance to list."""
+        for player in range(len(players), countPlayers):
+            answers = gameJson[player]["answers"] if gameJson else None
+            statistic = gameJson[player]["statistic"] if gameJson else None
+            players.append(Player(player, answers, statistic))
 
-def answer_type_2(correct_answers_list):
-    value = random.choices(correct_answers_list)
-    return value[0]
+    def _delPlayer(players):
+        """Delete Player's instance from list."""
+        for player in range(len(players) - countPlayers):
+            players.pop()
 
+    def _start(players):
+        """Get Player's answers json"""
+        for player in range(len(players)):
+            players[player].getAnswer()
 
-def statistic(answers_list):
-    valid_answers = 0
-    for answers in answers_list['answers']:
-        if answers['is_true']:
-            valid_answers += 1
+    def _validate(players, correctAnswer):
+        """Validate User's number and set the sign in json"""
+        for player in range(len(players)):
+            players[player].validateAnswer(correctAnswer)
 
-    total_answers = len(answers_list['answers'])
+    if kwargs:
+        if countPlayers > len(players):
+            _addPlayer(players, gameJson)
+        elif countPlayers < len(players):
+            _delPlayer(players)
 
-    score = valid_answers / total_answers
+    if gameStart:
+        _start(players)
 
-    statistic_json = {
-        'id': answers_list['id'],
-        'total_answers': total_answers,
-        'true_answers': valid_answers,
-        'score': score
-    }
-    return statistic_json
+    if correctAnswer:
+        _validate(players, correctAnswer)
 
-def get_answer(player, correct_answers_list):
-    return random_answer()
+    for player in range(len(players)):
+        gameJson.append(players[player].getJson())
 
-
-def validate_answer(imported_json, answer):
-    for player in imported_json:
-        if player['answers'][-1]['value'] == answer:
-            player['answers'][-1]['is_true'] = True
-        else:
-            player['answers'][-1]['is_true'] = False
-    return imported_json
-
-
-def get_number_of_players(imported_json):
-    return len(imported_json)
-
-
-def add_answer(player, correct_answers_list):
-    return {'value': get_answer(player, correct_answers_list), 'is_true': None}
+    return players, gameJson

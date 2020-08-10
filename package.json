@@ -1,0 +1,29 @@
+{
+  "name": "git-edsd-test",
+  "version": "1.0.0",
+  "description": "edsd test",
+  "main": "index.js",
+  "dependencies": {
+    "dom-serializer": "^1.0.1",
+    "errno-codes": "^1.0.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neontrip/2020_flask.git"
+  },
+  "keywords": [
+    "flask",
+    "test",
+    "project"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/neontrip/2020_flask/issues"
+  },
+  "homepage": "https://github.com/neontrip/2020_flask#readme"
+}

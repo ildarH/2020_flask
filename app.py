@@ -1,98 +1,72 @@
-from flask import Flask, request, render_template, jsonify, session, redirect, url_for
-from datetime import timedelta
-from game import add_answer, statistic, validate_answer
-from uuid import uuid4
-from time import ctime
-import os
 import json
+import os
+from datetime import timedelta
+from time import ctime
+from uuid import uuid4
+
+import pylibmc
+from flask import (Flask, jsonify, redirect,
+                   render_template, request,
+                   session, url_for)
+from flask_caching import Cache
+
+from game import game
+
+
+cache_servers = os.environ.get('MEMCACHIER_SERVERS')
+cache_user = os.environ.get('MEMCACHIER_USERNAME') or ''
+cache_pass = os.environ.get('MEMCACHIER_PASSWORD') or ''
+
+SESSION_TYPE = 'memcached'
+
+
+mc = pylibmc.Client(["127.0.0.1"], binary=True,
+                    behaviors={"tcp_nodelay": False,
+                    "ketama": True})
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=10)
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
 
-    game_json = []
+    players = []
+    gameJson = []
+    data = None
 
     if 'user' not in session:
         user = str(uuid4())
         session['user'] = user
-        session.modified = True
+        mc[user] = []
 
-    data = jsonify(game_json)
-
-    return render_template ('index.html', data=data, time=ctime())
-
-
-@app.route('/startgame', methods = ['POST'])
-def startgame():
-
-    if 'user' not in session:
-        return redirect(url_for ('index'))
-
-    default_players = 2
-    players = default_players
-    correct_answers = []
-    game_json = {'gameJson' : []}
-    error_msg = []
-
-    if request.method == 'POST' and game_json is not None:
-        game_start = request.form.get('gameStart')
-        players = int(request.form.get('countPlayers'))
-
-        if game_start:
-            for player in range(players):
-                game_json['gameJson'].append({'id' : player, 'answers' : []})
-                add = add_answer(players, correct_answers)
-                game_json['gameJson'][player]['answers'].append(add)
-        else:
-            error_msg.append('game start error')
-        game_start = 0
-
-        return jsonify(game_json)
-
-    error_msg.append('start game')
-    return jsonify({'Server error: ': error_msg }).data
-
-@app.route('/validategame', methods = ['POST'])
-def validategame():
-
-    if 'user' not in session:
-        return redirect(url_for ('index'))
-
-    correct_answers = []
-    statistics_list = []
-    error_msg = []
+    else:
+        user = session['user']
+        players = mc[user]
+        gameObj = game(players)
+        mc[user] = gameObj[0]
+        gameJson = gameObj[1]
 
     if request.method == 'POST':
-        correct_answer = request.form.get('inputCorrectAnswer')
-        game_json = json.loads(request.form.get('gameJson'))
+        data = request.get_json(force=False, silent=True)
+        gameObj = game(players, **data)
+        mc[user] = gameObj[0]
+        gameJson = gameObj[1]
+        return jsonify(gameJson)
 
-        if correct_answer:
-            correct_answer = int(correct_answer)
-            validate_answer(game_json, correct_answer)
-            correct_answers.append(correct_answer)
-            for player in game_json:
-                statistics_list.append(statistic(player))
+    return render_template('index.html', data=gameJson, time=ctime())
 
-            data = {'gameJson' : game_json,
-                    'statJson' : statistics_list}
 
-            return jsonify(data)
-        else:
-            error_msg.append('game validate error')
+@app.route('/restart', methods=['POST'])
+def restart():
+    if 'user' in session:
+        user = session['user']
+        session.pop('user')
+        del mc[user]
+    return redirect(url_for('index'))
 
-    return jsonify({'Server error: ': error_msg }).data
-
-@app.route('/restartgame', methods = ['GET'])
-def restartgame():
-    if request.method == 'GET':
-        if 'user' in session:
-            session.pop('user')
-            session.modified = True
-    return redirect(url_for ('index'))
 
 if __name__ == '__main__':
     app.run()
