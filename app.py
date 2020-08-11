@@ -1,4 +1,3 @@
-import json
 import os
 from datetime import timedelta
 from time import ctime
@@ -8,14 +7,8 @@ import pylibmc
 from flask import (Flask, jsonify, redirect,
                    render_template, request,
                    session, url_for)
-from flask_caching import Cache
 
 from game import game
-
-
-cache_servers = os.environ.get('MEMCACHIER_SERVERS')
-cache_user = os.environ.get('MEMCACHIER_USERNAME') or ''
-cache_pass = os.environ.get('MEMCACHIER_PASSWORD') or ''
 
 SESSION_TYPE = 'memcached'
 
@@ -23,7 +16,6 @@ SESSION_TYPE = 'memcached'
 mc = pylibmc.Client(["127.0.0.1"], binary=True,
                     behaviors={"tcp_nodelay": False,
                     "ketama": True})
-
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
